@@ -1,7 +1,29 @@
 import 'dart:convert';
-
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+
+Future<List<Users>> fetchUser(http.Client client) async {
+  final response =
+      await client.get(Uri.parse('https://jsonplaceholder.typicode.com/users'));
+
+  if (response.statusCode == 200) {
+    return (jsonDecode(response.body) as List)
+        .map((p) => Users.fromJson(p))
+        .toList();
+  } else {
+    throw Exception('Failed to load users');
+  }
+}
+
+class Users {
+  final String email;
+  final String name;
+  const Users({required this.email, required this.name});
+  factory Users.fromJson(Map<String, dynamic> json) {
+    return Users(email: json['email'], name: json['name']);
+  }
+}
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -10,92 +32,45 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-List<dynamic> users = [];
-
 class _HomeScreenState extends State<HomeScreen> {
+  late final Future<List<Users>>? futureUser;
   @override
   void initState() {
     super.initState();
 
     // ...
-    fetchUsers();
+    futureUser = fetchUser(http.Client());
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: ListView.builder(
-          padding: const EdgeInsets.all(10.0),
-          itemCount: users.length,
-          itemBuilder: (context, index) {
-            final user = users[index];
-            final email = user['email'];
-            final name = user['name'];
-            final username = user['username'];
-            final phone = user['phone'];
-            final website = user['website'];
-            final street = user['address']['street'];
-            return Card(
-              color: const Color.fromRGBO(64, 66, 88, 1),
-              elevation: 4,
-              child: ExpansionTile(
-                iconColor: Colors.white,
-                collapsedIconColor: Colors.white,
-                childrenPadding:
-                    const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
-                expandedCrossAxisAlignment: CrossAxisAlignment.end,
-                title: Text(
-                  name,
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16.0,
-                      fontWeight: FontWeight.w500),
+      body: Center(
+        child: FutureBuilder<List<Users>>(
+          future: futureUser,
+          builder: (context, snapshot) {
+            if (snapshot.hasData) {
+              return SingleChildScrollView(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: snapshot.data?.length,
+                  itemBuilder: (context, index) {
+                    return ListTile(
+                      title: Text(snapshot.data![index].name),
+                      subtitle: Text(snapshot.data![index].email),
+                    );
+                  },
                 ),
-                subtitle: Text(
-                  email,
-                  style: const TextStyle(color: Colors.white),
-                ),
-                children: [
-                  ListTile(
-                    title: Text(
-                      'Website: $website',
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                  ),
-                  ListTile(
-                    title: Text(
-                      'Username: $username',
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                  ),
-                  ListTile(
-                    title: Text(
-                      'Street: $street',
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                  ),
-                  ListTile(
-                    title: Text(
-                      'Phone: $phone',
-                      style: const TextStyle(
-                          color: Colors.white, fontWeight: FontWeight.w500),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }),
+              );
+            } else if (snapshot.hasError) {
+              return const Text("Error");
+            } else if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Text("Getting Data...");
+            }
+            return const CircularProgressIndicator();
+          },
+        ),
+      ),
     );
-  }
-
-  void fetchUsers() async {
-    const url = "https://jsonplaceholder.typicode.com/users";
-    final uri = Uri.parse(url);
-    final response = await http.get(uri);
-    final body = response.body;
-    final json = jsonDecode(body);
-    setState(() {
-      users = json;
-    });
   }
 }
