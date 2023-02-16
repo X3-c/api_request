@@ -9,14 +9,14 @@ import 'mock_demo_test.mocks.dart';
 @GenerateMocks([http.Client])
 void main() {
   group('fetchUser', () {
-    test('returns an Album if the http call completes successfully', () async {
+    test('returns the Users if the http call completes successfully', () async {
       final client = MockClient();
 
       // Use Mockito to return a successful response when it calls the
       // provided http.Client.
       when(client.get(Uri.parse('https://jsonplaceholder.typicode.com/users')))
           .thenAnswer((_) async =>
-              http.Response('{"userId": 1, "id": 2, "title": "mock"}', 200));
+              http.Response('{"id": 1, "email": "a", "name": "mock"}', 200));
       expect(await fetchUser(client), isA<Users>());
     });
 
